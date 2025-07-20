@@ -1,0 +1,25 @@
+default_agent: customer_support
+agents:
+  customer_support:
+    name: customer_support
+    entrypoint: customer_support.py
+    platform: linux/arm64
+    container_runtime: docker
+    aws:
+      execution_role: arn:aws:iam::xxxx:role/agentcore_test_iam_role
+      account: 'xxxx'
+      region: us-west-2
+      ecr_repository: 643045476917.dkr.ecr.us-west-2.amazonaws.com/bedrock_agentcore-customer_support
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: customer_support-66NzMPH3ic
+      agent_arn: arn:aws:bedrock-agentcore:us-west-2:xxx:runtime/customer_support-66NzMPH3ic
+      agent_session_id: null
+    authorizer_configuration: null
+    oauth_configuration: null
