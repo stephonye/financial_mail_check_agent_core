@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 from bedrock_agentcore.memory import MemoryClient
 
-client = MemoryClient(region_name="us-west-2")
+client = MemoryClient(region_name="us-east-1")
 
 # memories = client.list_memories()
 

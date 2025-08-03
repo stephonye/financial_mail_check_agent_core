@@ -1,5 +1,14 @@
+'''
+Descripttion: ****
+version: 1.0.0
+Author: Tom Zhou
+Date: 2025-08-02 22:49:16
+LastEditors: Tom Zhou
+LastEditTime: 2025-08-03 14:54:41
+'''
 from strands import Agent, tool
 from strands_tools import calculator, current_time
+from strands.models.bedrock import BedrockModel
 
 # Import the AgentCore SDK
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
@@ -55,7 +64,11 @@ def get_knowledge_base_info(topic: str):
 # Create an AgentCore app
 app = BedrockAgentCoreApp()
 
+# Use Amazon Titan model which should be accessible without special permission
+model = BedrockModel(model_id="amazon.titan-tg1-large")
+
 agent = Agent(
+    model=model,
     system_prompt=SYSTEM_PROMPT,
     tools=[calculator, current_time, get_customer_id, get_orders, get_knowledge_base_info]
 )

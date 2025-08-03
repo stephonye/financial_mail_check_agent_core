@@ -1,6 +1,6 @@
 from bedrock_agentcore.memory import MemoryClient
 
-client = MemoryClient(region_name="us-west-2")
+client = MemoryClient(region_name="us-east-1")
 
 memory = client.create_memory(
     name="CustomerSupportAgentMemory",

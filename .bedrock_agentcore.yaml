@@ -6,10 +6,11 @@ agents:
     platform: linux/arm64
     container_runtime: docker
     aws:
-      execution_role: arn:aws:iam::xxxx:role/agentcore_test_iam_role
-      account: 'xxxx'
-      region: us-west-2
-      ecr_repository: 643045476917.dkr.ecr.us-west-2.amazonaws.com/bedrock_agentcore-customer_support
+      execution_role: arn:aws:iam::211125355591:role/Test_bedrock_agentcore
+      execution_role_auto_create: true
+      account: '211125355591'
+      region: us-east-1
+      ecr_repository: 211125355591.dkr.ecr.us-east-1.amazonaws.com/cramai/agents
       ecr_auto_create: false
       network_configuration:
         network_mode: PUBLIC
@@ -18,8 +19,12 @@ agents:
       observability:
         enabled: true
     bedrock_agentcore:
-      agent_id: customer_support-66NzMPH3ic
-      agent_arn: arn:aws:bedrock-agentcore:us-west-2:xxx:runtime/customer_support-66NzMPH3ic
-      agent_session_id: null
+      agent_id: customer_support_1-erOKi4CEVs
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:211125355591:runtime/customer_support_1-erOKi4CEVs
+      agent_session_id: 56a0c8c8-13db-43dc-ae0d-aad90b8aa34c
+    codebuild:
+      project_name: bedrock-agentcore-customer_support-builder
+      execution_role: arn:aws:iam::211125355591:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-68b3df88f9
+      source_bucket: bedrock-agentcore-codebuild-sources-211125355591-us-east-1
     authorizer_configuration: null
     oauth_configuration: null

@@ -10,7 +10,7 @@ def get_response_from_agent(memory_id):
         actor_id="rdeb",
         session_id="session123",
         namespace="/users/rdeb",
-        region="us-west-2"
+        region="us-east-1"
     )
     agent = Agent(tools=strands_provider.tools, callback_handler=None)
 

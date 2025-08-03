@@ -8,7 +8,7 @@ from strands_tools.agent_core_memory import AgentCoreMemoryToolProvider
 class AgentCoreLongTermMemory():
 
     def create_memory(self, strategy="summ"):
-        client = MemoryClient(region_name="us-west-2")
+        client = MemoryClient(region_name="us-east-1")
 
         if strategy == "summ":
             memory = client.create_memory_and_wait(
