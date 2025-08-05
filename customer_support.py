@@ -4,7 +4,7 @@ version: 1.0.0
 Author: Tom Zhou
 Date: 2025-08-02 22:49:16
 LastEditors: Tom Zhou
-LastEditTime: 2025-08-03 14:54:41
+LastEditTime: 2025-08-05 13:06:04
 '''
 from strands import Agent, tool
 from strands_tools import calculator, current_time
@@ -64,8 +64,8 @@ def get_knowledge_base_info(topic: str):
 # Create an AgentCore app
 app = BedrockAgentCoreApp()
 
-# Use Amazon Titan model which should be accessible without special permission
-model = BedrockModel(model_id="amazon.titan-tg1-large")
+# Use Amazon Nova Pro model - supports system messages and direct invocation
+model = BedrockModel(model_id="amazon.nova-pro-v1:0")
 
 agent = Agent(
     model=model,

@@ -21,7 +21,7 @@ agents:
     bedrock_agentcore:
       agent_id: customer_support_1-erOKi4CEVs
       agent_arn: arn:aws:bedrock-agentcore:us-east-1:211125355591:runtime/customer_support_1-erOKi4CEVs
-      agent_session_id: 56a0c8c8-13db-43dc-ae0d-aad90b8aa34c
+      agent_session_id: a9b35eee-a5b9-4400-ae0b-7dcde558702d
     codebuild:
       project_name: bedrock-agentcore-customer_support-builder
       execution_role: arn:aws:iam::211125355591:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-68b3df88f9
