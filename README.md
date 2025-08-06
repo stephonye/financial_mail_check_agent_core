@@ -76,7 +76,7 @@ sudo ./aws/install
 
 #### **推荐方式：AWS SSO (IAM Identity Center)**
 
-如果您的组织使用AWS SSO，推荐使用以下方式配置：
+使用AWS SSO，使用以下方式配置：
 
 ```bash
 # 配置AWS SSO
