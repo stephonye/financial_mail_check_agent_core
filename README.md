@@ -1,23 +1,23 @@
-# AWS Agent Core - Customer Support Assistant
+# AWS Agent Core - Financial Email Processor
 
-基于AWS Bedrock AgentCore构建的智能客服助手项目，演示如何使用AWS Bedrock AgentCore SDK创建和部署AI助手。
+基于AWS Bedrock AgentCore构建的财务邮件处理项目，专注于Gmail财务邮件的自动处理和分析。
 
 ## 项目概述
 
-本项目实现了一个功能完整的客服助手，能够：
-- 根据客户邮箱查询客户信息
-- 查询订单详情和历史记录
-- 提供产品知识库信息
-- 使用Amazon Titan等Foundation Models提供智能对话
+本项目实现了一个专业的财务邮件处理系统，能够：
+- 自动搜索Gmail中的财务相关邮件（发票、订单、对账单）
+- 提取和解析财务信息，包括金额、币种、日期、状态
+- 实时汇率转换，将外币金额转换为USD
+- 存储处理结果到PostgreSQL数据库
+- 提供丰富的查询和统计分析功能
 
 ## 主要功能
 
 ### 🔧 核心工具
-- **客户信息查询** - 通过邮箱地址获取客户ID
-- **订单管理** - 查询客户订单详情和历史
-- **知识库搜索** - 提供产品相关信息和使用指南
-- **计算器工具** - 支持基础数学计算
-- **时间查询** - 获取当前时间信息
+- **邮件搜索处理** - 自动搜索和处理Gmail财务邮件
+- **汇率转换** - 实时外币到USD的汇率转换
+- **数据库存储** - 将结果保存到PostgreSQL数据库
+- **统计查询** - 提供财务数据统计和查询功能
 
 ### 🚀 部署方式
 - **本地开发模式** - 快速本地测试和开发
@@ -29,6 +29,8 @@
 - **Python 3.8+** - 主要开发语言
 - **AWS CLI** - AWS服务访问工具 (可通过 `brew install awscli` 安装)
 - **AWS账户及凭证** - 需要有效的AWS凭证配置
+- **PostgreSQL** - 数据库存储 (可选，但推荐使用)
+- **Gmail账户** - 需要处理财务邮件的Gmail账户
 - **uv** - Python包管理工具 (可选，也可使用pip)
 - **Docker** - 容器化部署 (可选，仅云端部署时需要)
 
@@ -133,8 +135,14 @@ agentcore launch
 ### 4. 测试Agent
 
 ```bash
-# 命令行测试
-agentcore invoke '{"prompt": "Hello, I need help with my order for me@example.net"}'
+# 处理财务邮件
+agentcore invoke '{"prompt": "请处理我的财务邮件"}'
+
+# 查询统计信息
+agentcore invoke '{"prompt": "显示财务邮件统计"}'
+
+# 查询特定类型邮件
+agentcore invoke '{"prompt": "查询所有发票记录"}'
 ```
 
 ## 配置说明
@@ -179,46 +187,77 @@ agentcore invoke '{"prompt": "Hello, I need help with my order for me@example.ne
 
 ### 配置文件
 
+## 配置说明
+
+### 1. 初始化配置
+
+```bash
+# 运行配置初始化脚本
+python setup_config.py --setup
+
+# 或者非交互式配置
+python setup_config.py --setup --account-id YOUR_AWS_ACCOUNT_ID
+```
+
+### 2. 配置文件
+
 项目配置文件 `.bedrock_agentcore.yaml` 包含：
 - Agent配置信息
-- AWS资源设置
+- AWS资源设置  
 - 部署参数
+- 环境变量配置
+
+使用模板文件 `.bedrock_agentcore.yaml.template` 自动生成配置。
 
 ## 项目结构
 
 ```
 aws_agent_core/
 ├── customer_support.py        # 主要Agent实现
-├── .bedrock_agentcore.yaml   # AgentCore配置
+├── email_processor.py         # Gmail邮件处理核心
+├── exchange_service.py        # 汇率转换服务
+├── database_service.py        # PostgreSQL数据库服务
+├── session_manager.py         # 会话管理
+├── setup_config.py            # 配置初始化脚本
+├── .bedrock_agentcore.yaml   # AgentCore配置 (自动生成)
+├── .bedrock_agentcore.yaml.template  # 配置模板
+├── .bedrock_agentcore.yaml.backup    # 配置备份
 ├── Dockerfile                # Docker容器配置
+├── docker-compose.yml        # 本地开发配置
 ├── requirements.txt          # Python依赖
-├── memory_examples/          # 内存管理示例
-├── tests/                    # 测试文件
-└── policies/                 # AWS策略文件
+├── .env.example              # 环境变量示例
+├── credentials_template.json # Gmail API配置模板
+├── init.sql                  # 数据库初始化脚本
+├── run_local.py              # 本地运行脚本
+├── deploy.sh                 # 部署脚本
+├── EMAIL_PROCESSING_GUIDE.md # 邮件处理指南
+├── DEPLOYMENT_GUIDE.md       # 部署指南
+├── LOCAL_DEPLOYMENT.md       # 本地部署指南
+└── README.md                 # 项目说明
 ```
 
 ## 最新更新
 
-### v1.0.0 (2025-08-03)
+### v2.0.0 (2025-08-29)
 
 **功能增强：**
-- ✅ 修复了Dockerfile在CodeBuild中的访问问题
-- ✅ 解决了ECR权限配置问题  
-- ✅ 更新了IAM角色信任策略以支持Bedrock AgentCore
-- ✅ 切换到Amazon Titan模型以避免地区限制
-- ✅ 优化了Docker构建配置和.dockerignore设置
+- ✅ 移除原有客服功能，专注于财务邮件处理
+- ✅ 添加Gmail邮件搜索和处理功能
+- ✅ 实现实时汇率转换服务
+- ✅ 集成PostgreSQL数据库存储
+- ✅ 提供丰富的查询和统计功能
 
 **技术改进：**
-- 更新了执行角色权限配置
-- 优化了本地开发和云端部署流程
-- 改进了错误处理和日志记录
-- 增强了容器化部署稳定性
+- 优化邮件解析算法，提高信息提取准确率
+- 支持多种汇率API，确保服务可靠性
+- 自动数据库表结构管理
+- 完善错误处理和日志记录
 
-**已知问题解决：**
-- 修复了"Dockerfile not found"错误
-- 解决了ECR推送权限问题
-- 修复了模型访问权限问题
-- 优化了Agent部署流程
+**新增功能：**
+- Gmail OAuth 2.0认证集成
+- 多币种汇率实时转换
+- PostgreSQL数据持久化
+- 财务数据统计和分析
 
 ## 故障排除
 

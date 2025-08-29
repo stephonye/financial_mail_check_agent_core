@@ -2,3 +2,12 @@ strands-agents
 strands-agents-tools
 bedrock-agentcore
 bedrock-agentcore-starter-toolkit
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
+beautifulsoup4
+lxml
+requests
+psycopg2-binary
+python-dotenv

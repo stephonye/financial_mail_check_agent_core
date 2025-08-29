@@ -1,0 +1,33 @@
+# AWS Bedrock AgentCore 配置文件模板
+# 请复制此文件为 .bedrock_agentcore.yaml 并替换所有占位符为您的实际AWS配置信息
+
+default_agent: customer_support
+agents:
+  customer_support:
+    name: customer_support
+    entrypoint: customer_support.py
+    platform: linux/arm64
+    container_runtime: docker
+    aws:
+      execution_role: arn:aws:iam::YOUR_ACCOUNT_ID:role/YOUR_EXECUTION_ROLE_NAME
+      execution_role_auto_create: true
+      account: 'YOUR_ACCOUNT_ID'
+      region: YOUR_AWS_REGION
+      ecr_repository: YOUR_ACCOUNT_ID.dkr.ecr.YOUR_AWS_REGION.amazonaws.com/YOUR_ECR_REPOSITORY_NAME
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: YOUR_AGENT_ID
+      agent_arn: arn:aws:bedrock-agentcore:YOUR_AWS_REGION:YOUR_ACCOUNT_ID:runtime/YOUR_AGENT_ID
+      agent_session_id: YOUR_AGENT_SESSION_ID
+    codebuild:
+      project_name: bedrock-agentcore-customer_support-builder
+      execution_role: arn:aws:iam::YOUR_ACCOUNT_ID:role/YOUR_CODEBUILD_ROLE_NAME
+      source_bucket: bedrock-agentcore-codebuild-sources-YOUR_ACCOUNT_ID-YOUR_AWS_REGION
+    authorizer_configuration: null
+    oauth_configuration: null

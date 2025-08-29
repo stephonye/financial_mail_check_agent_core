@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  # 主应用服务 - Financial Email Processor
+  app:
+    build: .
+    container_name: financial-email-processor
+    ports:
+      - "8080:8080"  # AgentCore HTTP端口
+      - "8000:8000"  # 调试端口（可选）
+    environment:
+      - AWS_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      
+      # 数据库配置
+      - DATABASE_URL=postgresql://financial_user:financial_password@db:5432/financial_emails
+      - MCP_ENABLED=false
+      
+      # Gmail API配置（通过volume挂载）
+      - GMAIL_CREDENTIALS_FILE=/app/credentials.json
+    
+    depends_on:
+      - db
+    
+    volumes:
+      # 挂载Gmail凭据（开发时使用）
+      - ./credentials.json:/app/credentials.json:ro
+      - ./tokens:/app/tokens
+      
+      # 开发模式：挂载代码目录（热重载）
+      # - .:/app
+      # - /app/__pycache__
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    networks:
+      - financial-network
+
+  # PostgreSQL数据库
+  db:
+    image: postgres:13-alpine
+    container_name: financial-db
+    environment:
+      - POSTGRES_DB=financial_emails
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres_password
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    
+    ports:
+      - "5432:5432"
+    
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    
+    networks:
+      - financial-network
+
+  # pgAdmin - 数据库管理界面
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: financial-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@financial.com
+      - PGADMIN_DEFAULT_PASSWORD=admin123
+      - PGADMIN_LISTEN_PORT=80
+    
+    ports:
+      - "5050:80"
+    
+    depends_on:
+      - db
+    
+    restart: unless-stopped
+    
+    networks:
+      - financial-network
+
+  # Redis - 会话缓存（可选）
+  redis:
+    image: redis:7-alpine
+    container_name: financial-redis
+    ports:
+      - "6379:6379"
+    
+    command: redis-server --appendonly yes
+    
+    volumes:
+      - redis_data:/data
+    
+    restart: unless-stopped
+    
+    networks:
+      - financial-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  tokens:
+    driver: local
+
+networks:
+  financial-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
