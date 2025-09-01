@@ -5,9 +5,14 @@ import os
 import json
 import re
 import base64
+import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from bs4 import BeautifulSoup
+
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Google API imports
 from google.auth.transport.requests import Request
@@ -21,6 +26,7 @@ from exchange_service import ExchangeRateService
 from database_service import DatabaseService
 from session_manager import session_manager
 from llm_email_analyzer import LLMEmailAnalyzer, analyze_email_content_llm
+from credential_manager import credential_manager
 import os
 
 # Gmail API 配置
@@ -28,16 +34,17 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
 class EmailProcessor:
     def __init__(self, credentials_path: str = 'credentials.json', token_path: str = 'token.json', 
-                 email_account: str = None):
+                 email_account: str = None, user_id: str = "default_user"):
         self.credentials_path = credentials_path
         self.token_path = token_path
         self.email_account = email_account
+        self.user_id = user_id
         self.service = None
         self.exchange_service = ExchangeRateService()
         
         # 检查是否启用MCP连接
         use_mcp = os.getenv('MCP_ENABLED', 'false').lower() == 'true'
-        self.db_service = DatabaseService(use_mcp=use_mcp)
+        self.db_service = DatabaseService(use_mcp=use_mcp, user_id=user_id)
         
         # 初始化LLM分析器
         self.llm_analyzer = LLMEmailAnalyzer()
@@ -54,12 +61,23 @@ class EmailProcessor:
         try:
             creds = None
             
-            if os.path.exists(token_file):
+            # 尝试从凭证管理器获取凭证
+            credential_key = f"gmail_token_{account_suffix}"
+            token_json = credential_manager.get_credential(credential_key)
+            
+            if token_json:
+                # 从凭证管理器加载凭证
+                creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
+                logger.info("从凭证管理器加载Gmail凭证")
+            elif os.path.exists(token_file):
+                # 从文件加载凭证（向后兼容）
                 creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+                logger.info("从文件加载Gmail凭证")
             
             if not creds or not creds.valid:
                 if creds and creds.expired and creds.refresh_token:
                     creds.refresh(Request())
+                    logger.info("Gmail凭证已刷新")
                 else:
                     flow = InstalledAppFlow.from_client_secrets_file(
                         self.credentials_path, SCOPES)
@@ -69,7 +87,16 @@ class EmailProcessor:
                         port=0,
                         prompt='select_account' if self.email_account else 'consent'
                     )
+                    logger.info("通过用户授权获取新的Gmail凭证")
                 
+                # 保存凭证到凭证管理器
+                credential_manager.store_credential(
+                    credential_key,
+                    creds.to_json(),
+                    f"Gmail API凭证 for {self.email_account or 'default'}"
+                )
+                
+                # 同时保存到文件（向后兼容）
                 with open(token_file, 'w') as token:
                     token.write(creds.to_json())
             
@@ -92,32 +119,52 @@ class EmailProcessor:
     
     def search_emails(self, query: str, max_results: int = 50) -> List[Dict]:
         """搜索邮件"""
+        logger.info(f"开始搜索邮件，查询条件: {query}，最大结果数: {max_results}")
+        
         try:
             results = self.service.users().messages().list(
                 userId='me', q=query, maxResults=max_results
             ).execute()
             
             messages = results.get('messages', [])
+            logger.info(f"找到 {len(messages)} 封邮件")
+            
             email_details = []
             
-            for message in messages:
-                msg = self.service.users().messages().get(
-                    userId='me', id=message['id'], format='full'
-                ).execute()
-                
-                email_info = self._parse_email(msg)
-                if email_info:
-                    email_details.append(email_info)
+            for i, message in enumerate(messages):
+                try:
+                    msg = self.service.users().messages().get(
+                        userId='me', id=message['id'], format='full'
+                    ).execute()
+                    
+                    email_info = self._parse_email(msg)
+                    if email_info:
+                        email_details.append(email_info)
+                        logger.debug(f"成功解析邮件 {i+1}/{len(messages)}: {email_info.get('subject', 'No Subject')}")
+                    else:
+                        logger.warning(f"无法解析邮件 {i+1}/{len(messages)}: {message['id']}")
+                        
+                except Exception as msg_error:
+                    logger.error(f"解析邮件 {i+1}/{len(messages)} 失败: {msg_error}")
+                    continue
             
+            logger.info(f"邮件搜索完成，成功解析 {len(email_details)} 封邮件")
             return email_details
             
         except HttpError as error:
-            print(f'An error occurred: {error}')
+            logger.error(f'搜索邮件时发生HTTP错误: {error}')
+            return []
+        except Exception as e:
+            logger.error(f'搜索邮件时发生未知错误: {e}')
             return []
     
     def _parse_email(self, msg: Dict) -> Optional[Dict]:
         """解析邮件内容"""
         try:
+            # 获取邮件ID用于日志
+            email_id = msg.get('id', 'unknown')
+            logger.debug(f"开始解析邮件: {email_id}")
+            
             # 获取邮件头部信息
             headers = msg['payload']['headers']
             subject = next((h['value'] for h in headers if h['name'] == 'Subject'), '')
@@ -131,7 +178,7 @@ class EmailProcessor:
             financial_info = self._extract_financial_info(subject, body)
             
             if financial_info:
-                return {
+                parsed_email = {
                     'id': msg['id'],
                     'subject': subject,
                     'from': from_email,
@@ -139,11 +186,18 @@ class EmailProcessor:
                     'body_preview': body[:200] + '...' if len(body) > 200 else body,
                     'financial_info': financial_info
                 }
+                logger.debug(f"成功解析邮件: {email_id}, 主题: {subject}")
+                return parsed_email
+            else:
+                logger.debug(f"邮件不包含财务信息: {email_id}, 主题: {subject}")
             
             return None
             
+        except KeyError as e:
+            logger.error(f'解析邮件 {email_id} 时缺少必要字段: {e}')
+            return None
         except Exception as e:
-            print(f'Error parsing email: {e}')
+            logger.error(f'解析邮件 {email_id} 时发生错误: {e}')
             return None
     
     def _get_email_body(self, payload: Dict) -> str:
@@ -484,7 +538,7 @@ def process_financial_emails(save_to_db: bool = True) -> Dict:
     return result
 
 
-def process_emails_with_session(session_id: str, email_account: str = None, query: str = None) -> Dict:
+def process_emails_with_session(session_id: str, email_account: str = None, query: str = None, user_id: str = "default_user") -> Dict:
     """
     对话式处理邮件 - 支持会话管理和多账户
     
@@ -492,6 +546,7 @@ def process_emails_with_session(session_id: str, email_account: str = None, quer
         session_id: 会话ID
         email_account: 邮箱账户地址
         query: 搜索查询条件
+        user_id: 用户ID，用于权限控制
     
     Returns:
         处理结果和会话状态
@@ -503,7 +558,7 @@ def process_emails_with_session(session_id: str, email_account: str = None, quer
         session_manager.set_email_account(session_id, email_account)
     
     # 创建处理器并认证
-    processor = EmailProcessor(email_account=email_account)
+    processor = EmailProcessor(email_account=email_account, user_id=user_id)
     
     if not processor.authenticate_gmail_for_account(email_account):
         session_manager.update_session_state(session_id, "error")
@@ -554,7 +609,7 @@ def process_emails_with_session(session_id: str, email_account: str = None, quer
     }
 
 
-def confirm_and_save_session(session_id: str) -> Dict:
+def confirm_and_save_session(session_id: str, user_id: str = "default_user") -> Dict:
     """确认并保存会话中的数据"""
     session = session_manager.get_session(session_id)
     
@@ -565,7 +620,7 @@ def confirm_and_save_session(session_id: str) -> Dict:
         }
     
     # 创建处理器
-    processor = EmailProcessor()
+    processor = EmailProcessor(user_id=user_id)
     
     # 保存已确认的数据
     save_result = processor.save_confirmed_data(session_id)

@@ -1,8 +1,20 @@
-# AWS Bedrock AgentCore 部署指南
+# AWS Bedrock AgentCore 完整部署指南
 
-## 部署架构
+本指南提供了在AWS Bedrock AgentCore上部署财务邮件处理器应用的详细步骤。
 
-本项目使用标准的AWS Bedrock AgentCore部署模式：
+## 目录
+1. [系统架构](#系统架构)
+2. [前置要求](#前置要求)
+3. [环境准备](#环境准备)
+4. [本地开发和测试](#本地开发和测试)
+5. [AWS部署配置](#aws部署配置)
+6. [部署到AWS Bedrock AgentCore](#部署到aws-bedrock-agentcore)
+7. [配置和集成](#配置和集成)
+8. [监控和日志](#监控和日志)
+9. [故障排除](#故障排除)
+10. [安全最佳实践](#安全最佳实践)
+
+## 系统架构
 
 ```
 +-------------------+     +---------------------+     +-------------------+
@@ -50,7 +62,7 @@ pip install bedrock-agentcore
 agentcore --version
 ```
 
-## 本地环境设置
+## 环境准备
 
 ### 1. 克隆代码库
 ```bash
@@ -76,7 +88,7 @@ pip install -r requirements.txt
 python -c "import tool_manager; import credential_manager; print('Dependencies installed successfully')"
 ```
 
-## 应用配置
+## 本地开发和测试
 
 ### 1. Gmail API配置
 #### 创建Google Cloud项目
@@ -118,7 +130,16 @@ MCP_ENABLED=false
 EXCHANGE_API_KEY=your_exchange_api_key
 ```
 
-## 部署步骤
+### 4. 本地运行测试
+```bash
+# 本地运行测试
+agentcore launch --local
+
+# 测试Agent功能
+agentcore invoke '{"prompt": "测试连接"}'
+```
+
+## AWS部署配置
 
 ### 1. 配置部署文件
 
@@ -137,62 +158,7 @@ aws:
   ecr_repository: YOUR_AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/financial-email-processor
 ```
 
-### 2. 本地测试
-
-#### 2.1. 本地运行测试
-```bash
-# 本地运行测试
-agentcore launch --local
-
-# 测试Agent功能
-agentcore invoke '{"prompt": "测试连接"}'
-```
-
-#### 2.2. 本地API测试
-```bash
-# 测试健康检查端点
-curl http://localhost:8080/health
-
-# 测试就绪检查端点
-curl http://localhost:8080/ready
-
-# 测试基本功能
-curl -X POST http://localhost:8080/invocations \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Hello, how can you help me?"}'
-```
-
-#### 2.3. 凭证测试
-确保Gmail认证正常工作：
-```bash
-# 运行应用并检查Gmail认证
-python customer_support.py
-```
-
-### 3. 构建Docker镜像
-
-```bash
-# 本地构建测试
-docker build -t financial-email-processor .
-
-# 运行测试容器
-docker run -p 8080:8080 financial-email-processor
-```
-
-### 4. 部署到AWS
-
-```bash
-# 部署到Bedrock AgentCore
-agentcore launch
-
-# 查看部署状态
-agentcore status
-
-# 查看日志
-agentcore logs
-```
-
-### 5. 环境变量配置
+### 2. 环境变量配置
 
 在AWS管理控制台中配置环境变量：
 
@@ -205,28 +171,102 @@ MCP_ENABLED=false
 LOG_LEVEL=INFO
 ```
 
-## 部署模式
+## 部署到AWS Bedrock AgentCore
 
-### 开发模式
+### 1. 构建Docker镜像
+
+```bash
+# 本地构建测试
+docker build -t financial-email-processor .
+
+# 运行测试容器
+docker run -p 8080:8080 financial-email-processor
+```
+
+### 2. 部署到AWS
+
+```bash
+# 部署到Bedrock AgentCore
+agentcore launch
+
+# 查看部署状态
+agentcore status
+
+# 查看日志
+agentcore logs
+```
+
+### 3. 部署模式
+
+#### 开发模式
 
 ```bash
 # 本地开发模式（快速迭代）
 agentcore launch --local --hot-reload
 ```
 
-### 生产模式
+#### 生产模式
 
 ```bash
 # 生产环境部署
 agentcore launch --env production
 ```
 
-### 蓝绿部署
+#### 蓝绿部署
 
 ```bash
 # 蓝绿部署（零停机）
 agentcore launch --strategy blue-green
 ```
+
+## 配置和集成
+
+### 1. 创建执行角色
+
+```bash
+# 创建信任策略文件
+cat > trust-policy.json << EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "bedrock.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+
+# 创建角色
+aws iam create-role \
+  --role-name AmazonBedrockAgentCoreExecutionRole \
+  --assume-role-policy-document file://trust-policy.json
+
+# 附加必要策略
+aws iam attach-role-policy \
+  --role-name AmazonBedrockAgentCoreExecutionRole \
+  --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+
+aws iam attach-role-policy \
+  --role-name AmazonBedrockAgentCoreExecutionRole \
+  --policy-arn arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+```
+
+### 2. 配置Bedrock模型访问
+
+确保您的AWS账户具有Amazon Nova Pro模型的访问权限：
+
+```bash
+# 检查可用的Bedrock模型
+aws bedrock list-foundation-models --query 'modelSummaries[?modelName.contains(`Nova`)]'
+```
+
+### 3. 配置安全组和网络
+
+如果使用AWS RDS数据库，请确保配置适当的安全组规则以允许来自Bedrock AgentCore的连接。
 
 ## 监控和日志
 
@@ -270,30 +310,6 @@ agentcore metrics --resource-utilization
    ```bash
    # 检查容器日志
    docker logs <container_id>
-   ```
-
-4. **工具管理器问题**
-   ```bash
-   # 检查工具注册状态
-   python -c "from tool_manager import tool_manager; print(tool_manager.get_tool_statistics())"
-   ```
-
-5. **凭证管理问题**
-   ```bash
-   # 检查凭证文件
-   ls -la secret.key credentials.json
-   
-   # 检查凭证管理器
-   python -c "from credential_manager import credential_manager; print(credential_manager.list_credentials())"
-   ```
-
-6. **权限控制问题**
-   ```bash
-   # 检查权限配置
-   cat permissions.json
-   
-   # 测试权限检查
-   python -c "from permission_controller import permission_controller; print(permission_controller.check_user_permission('default_user', 'access_database'))"
    ```
 
 ### 调试模式
@@ -368,9 +384,9 @@ scaling:
 4. **启用CloudTrail日志记录**
 5. **使用AWS Secrets Manager管理敏感信息**
 
-### 凭证安全管理
+### 凭证安全
 
-应用使用凭证管理器来安全存储敏感信息：
+我们的应用使用凭证管理器来安全存储敏感信息：
 
 ```python
 # 凭证加密存储示例
@@ -398,27 +414,58 @@ if permission_controller.check_user_permission(user_id, "access_database"):
     pass
 ```
 
-### 工具管理安全
-
-所有工具都通过工具管理器注册和管理，确保只有授权的工具可以被调用：
-
-```python
-# 工具注册示例
-from tool_manager import tool_manager
-
-# 注册工具
-tool_manager.register_tool(
-    "process_financial_emails", 
-    "1.0.0", 
-    "搜索和处理Gmail中的财务邮件", 
-    "邮件工具", 
-    process_financial_emails_tool
-)
-```
-
 ## 支持的联系方式
 
 如有部署问题，请参考：
 - [AWS Bedrock AgentCore文档](https://docs.aws.amazon.com/bedrock/latest/agentcoreguide/)
 - [AWS开发者论坛](https://forums.aws.amazon.com/)
 - [GitHub Issues](https://github.com/your-repo/issues)
+
+## 附录
+
+### 环境变量参考
+| 变量名 | 描述 | 示例值 |
+|--------|------|--------|
+| DATABASE_URL | 数据库连接字符串 | postgresql://user:pass@host:5432/db |
+| MCP_ENABLED | 是否启用MCP连接 | true/false |
+| EXCHANGE_API_KEY | 汇率API密钥 | your_api_key |
+
+### IAM策略参考
+确保执行角色具有以下权限:
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "bedrock:InvokeModel",
+                "bedrock:ListFoundationModels"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::your-bucket/*",
+                "arn:aws:s3:::your-bucket"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:*:*:*"
+        }
+    ]
+}
+```
+
+本部署指南提供了在AWS Bedrock AgentCore上部署财务邮件处理器应用的完整指南。按照这些步骤，您应该能够成功部署和运行应用。

@@ -1,0 +1,30 @@
+{
+  "user": [
+    "read_emails",
+    "process_emails",
+    "access_database",
+    "access_financial_data",
+    "access_exchange_rates",
+    "use_llm_analysis"
+  ],
+  "admin": [
+    "read_emails",
+    "process_emails",
+    "access_database",
+    "modify_data",
+    "access_financial_data",
+    "administer_system",
+    "access_exchange_rates",
+    "use_llm_analysis"
+  ],
+  "system": [
+    "read_emails",
+    "process_emails",
+    "access_database",
+    "modify_data",
+    "access_financial_data",
+    "administer_system",
+    "access_exchange_rates",
+    "use_llm_analysis"
+  ]
+}

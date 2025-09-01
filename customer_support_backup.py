@@ -1,10 +1,10 @@
 '''
 Descripttion: ****
 version: 1.0.0
-Author: Tom Zhou
-Date: 2025-08-02 22:49:16
-LastEditors: Tom Zhou
-LastEditTime: 2025-08-05 13:06:04
+Author: Stephon Ye
+Date: 2025-08-028 22:49:16
+LastEditors: Stephon Ye
+LastEditTime: 2025-08-29 13:06:04
 '''
 from strands import Agent, tool
 from strands_tools import calculator, current_time

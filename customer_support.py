@@ -1,7 +1,7 @@
 """
 Financial Email Processor - AWS AgentCore based Gmail财务数据处理
-version: 2.0.0
-Author: Tom Zhou
+version: 1.0.0
+Author: Stephon Ye
 Date: 2025-08-29
 Description: AWS AgentCore财务邮件处理Agent，支持Gmail邮件处理和数据分析
 """
@@ -9,6 +9,9 @@ from strands import Agent, tool
 from strands_tools import calculator, current_time
 from strands.models.bedrock import BedrockModel
 from strands_tools.agent_core_memory import AgentCoreMemoryToolProvider
+from datetime import datetime
+from tool_manager import tool_manager
+from typing import Dict, List, Optional, Any
 
 # Import the AgentCore SDK
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
@@ -101,12 +104,13 @@ def get_knowledge_base_info(topic: str):
 
 
 @tool
-def process_financial_emails_tool(max_results: int = 20):
+def process_financial_emails_tool(max_results: int = 20, user_id: str = "default_user"):
     """
     搜索和处理Gmail中的财务邮件（发票、订单、对账单）
     
     Args:
         max_results: 最大返回结果数量
+        user_id: 用户ID，用于权限控制
     
     Returns:
         包含财务信息的处理结果
@@ -115,7 +119,7 @@ def process_financial_emails_tool(max_results: int = 20):
         return {"error": "Email processing dependencies not available. Please install required packages."}
     
     try:
-        processor = EmailProcessor()
+        processor = EmailProcessor(user_id=user_id)
         
         # 搜索财务相关邮件
         query = 'subject:(invoice OR order OR statement)'
@@ -143,9 +147,12 @@ def process_financial_emails_tool(max_results: int = 20):
 
 
 @tool  
-def get_financial_email_summary():
+def get_financial_email_summary(user_id: str = "default_user"):
     """
     获取财务邮件的统计摘要信息
+    
+    Args:
+        user_id: 用户ID，用于权限控制
     
     Returns:
         财务邮件统计信息
@@ -153,7 +160,7 @@ def get_financial_email_summary():
     if DatabaseService is not None:
         # 使用数据库获取统计信息
         try:
-            db_service = DatabaseService()
+            db_service = DatabaseService(user_id=user_id)
             stats = db_service.get_summary_stats()
             
             # 获取最近几条记录作为示例
@@ -172,7 +179,7 @@ def get_financial_email_summary():
     elif EmailProcessor is not None:
         # 回退到邮件搜索方式
         try:
-            processor = EmailProcessor()
+            processor = EmailProcessor(user_id=user_id)
             
             # 搜索所有财务邮件
             query = 'subject:(invoice OR order OR statement)'
@@ -222,7 +229,7 @@ def get_financial_email_summary():
 
 
 @tool
-def query_financial_emails(limit: int = 10, document_type: str = None, status: str = None):
+def query_financial_emails(limit: int = 10, document_type: str = None, status: str = None, user_id: str = "default_user"):
     """
     查询数据库中的财务邮件记录
     
@@ -230,6 +237,7 @@ def query_financial_emails(limit: int = 10, document_type: str = None, status: s
         limit: 返回记录数量
         document_type: 文档类型过滤 (invoice/order/statement)
         status: 状态过滤 (收款/付款/完成付款/其他)
+        user_id: 用户ID，用于权限控制
     
     Returns:
         财务邮件查询结果
@@ -238,7 +246,7 @@ def query_financial_emails(limit: int = 10, document_type: str = None, status: s
         return {"error": "Database service not available."}
     
     try:
-        db_service = DatabaseService()
+        db_service = DatabaseService(user_id=user_id)
         
         # 构建查询条件
         where_conditions = []
@@ -273,7 +281,7 @@ def query_financial_emails(limit: int = 10, document_type: str = None, status: s
 
 
 @tool
-def process_emails_interactive(session_id: str, email_account: str = None, query: str = None):
+def process_emails_interactive(session_id: str, email_account: str = None, query: str = None, user_id: str = "default_user"):
     """
     对话式处理财务邮件 - 支持多账户和用户交互
     
@@ -281,6 +289,7 @@ def process_emails_interactive(session_id: str, email_account: str = None, query
         session_id: 会话ID（用于多轮对话）
         email_account: 要处理的邮箱账户地址
         query: 自定义搜索查询条件
+        user_id: 用户ID，用于权限控制
     
     Returns:
         处理结果和审核数据
@@ -289,7 +298,8 @@ def process_emails_interactive(session_id: str, email_account: str = None, query
         return {"error": "Email processing with session not available."}
     
     try:
-        result = process_emails_with_session(session_id, email_account, query)
+        # 传递用户ID到处理函数
+        result = process_emails_with_session(session_id, email_account, query, user_id)
         return result
         
     except Exception as e:
@@ -298,7 +308,7 @@ def process_emails_interactive(session_id: str, email_account: str = None, query
 
 @tool  
 def confirm_email_data(session_id: str, email_id: str, confirmed: bool = True, 
-                      modifications: Dict = None):
+                      modifications: Optional[Dict[str, Any]] = None):
     """
     确认或修改邮件数据
     
@@ -346,12 +356,13 @@ def confirm_email_data(session_id: str, email_id: str, confirmed: bool = True,
 
 
 @tool
-def save_confirmed_data(session_id: str):
+def save_confirmed_data(session_id: str, user_id: str = "default_user"):
     """
     保存已确认的数据到数据库
     
     Args:
         session_id: 会话ID
+        user_id: 用户ID，用于权限控制
     
     Returns:
         保存结果
@@ -360,7 +371,7 @@ def save_confirmed_data(session_id: str):
         return {"error": "Save functionality not available."}
     
     try:
-        result = confirm_and_save_session(session_id)
+        result = confirm_and_save_session(session_id, user_id)
         return result
         
     except Exception as e:
@@ -472,33 +483,46 @@ app = BedrockAgentCoreApp()
 # Use Amazon Nova Pro model - supports system messages and direct invocation
 model = BedrockModel(model_id="amazon.nova-pro-v1:0")
 
-# 创建基础工具列表
-agent_tools = [calculator, current_time, get_customer_id, get_orders, get_knowledge_base_info]
+# 注册基础工具
+tool_manager.register_tool("calculator", "1.0.0", "基本计算器功能", "基础工具", calculator)
+tool_manager.register_tool("current_time", "1.0.0", "获取当前时间", "基础工具", current_time)
+tool_manager.register_tool("get_customer_id", "1.0.0", "根据邮箱地址获取客户ID", "客户工具", get_customer_id)
+tool_manager.register_tool("get_orders", "1.0.0", "查询客户订单信息", "订单工具", get_orders)
+tool_manager.register_tool("get_knowledge_base_info", "1.0.0", "获取知识库信息", "知识库工具", get_knowledge_base_info)
 
-# 如果邮件处理功能可用，添加邮件处理工具
+# 如果邮件处理功能可用，注册邮件处理工具
 if EmailProcessor is not None:
-    agent_tools.extend([process_financial_emails_tool, get_financial_email_summary])
+    tool_manager.register_tool("process_financial_emails", "1.0.0", "搜索和处理Gmail中的财务邮件", "邮件工具", process_financial_emails_tool)
+    tool_manager.register_tool("get_financial_email_summary", "1.0.0", "获取财务邮件的统计摘要信息", "邮件工具", get_financial_email_summary)
 
-# 如果数据库服务可用，添加数据库查询工具
+# 如果数据库服务可用，注册数据库查询工具
 if DatabaseService is not None:
-    agent_tools.append(query_financial_emails)
+    tool_manager.register_tool("query_financial_emails", "1.0.0", "查询数据库中的财务邮件记录", "数据库工具", query_financial_emails)
 
-# 添加对话式邮件处理工具
+# 注册对话式邮件处理工具
 if all([process_emails_with_session, confirm_and_save_session, session_manager]):
-    agent_tools.extend([
-        process_emails_interactive,
-        confirm_email_data,
-        save_confirmed_data,
-        get_session_status
-    ])
+    tool_manager.register_tool("process_emails_interactive", "1.0.0", "对话式处理财务邮件", "邮件工具", process_emails_interactive)
+    tool_manager.register_tool("confirm_email_data", "1.0.0", "确认或修改邮件数据", "邮件工具", confirm_email_data)
+    tool_manager.register_tool("save_confirmed_data", "1.0.0", "保存已确认的数据到数据库", "数据库工具", save_confirmed_data)
+    tool_manager.register_tool("get_session_status", "1.0.0", "获取会话状态信息", "会话工具", get_session_status)
 
-# 添加LLM邮件分析工具
+# 注册LLM邮件分析工具
 if analyze_email_content_llm is not None:
-    agent_tools.append(analyze_email_with_llm)
+    tool_manager.register_tool("analyze_email_with_llm", "1.0.0", "使用LLM深度分析邮件内容", "AI工具", analyze_email_with_llm)
 
-# 添加AgentCore内存管理工具
+# 注册AgentCore内存管理工具
 memory_tool_provider = AgentCoreMemoryToolProvider()
-agent_tools.extend(memory_tool_provider.tools)
+for memory_tool in memory_tool_provider.tools:
+    tool_manager.register_tool(
+        memory_tool.__name__ if hasattr(memory_tool, '__name__') else str(memory_tool),
+        "1.0.0",
+        "AgentCore内存管理工具",
+        "内存工具",
+        memory_tool
+    )
+
+# 获取所有启用的工具
+agent_tools = [tool_info.func for tool_info in tool_manager.get_enabled_tools()]
 
 agent = Agent(
     model=model,
@@ -522,11 +546,41 @@ def invoke(payload):
 @app.route("/health")
 def health_check():
     """Health check endpoint for AWS Bedrock AgentCore"""
+    # 检查数据库连接状态
+    db_status = "unknown"
+    if DatabaseService is not None:
+        try:
+            db_service = DatabaseService()
+            if db_service.connect():
+                db_status = "connected"
+                db_service.disconnect()
+            else:
+                db_status = "disconnected"
+        except:
+            db_status = "error"
+    
+    # 检查ExchangeRateService状态
+    exchange_service_status = "unknown"
+    try:
+        from exchange_service import ExchangeRateService
+        exchange_service = ExchangeRateService()
+        if exchange_service.get_exchange_rate("USD", "USD") == 1.0:
+            exchange_service_status = "operational"
+        else:
+            exchange_service_status = "degraded"
+    except:
+        exchange_service_status = "error"
+    
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "service": "financial-email-processor",
-        "version": "2.0.0"
+        "version": "1.0.0",
+        "components": {
+            "database": db_status,
+            "exchange_service": exchange_service_status,
+            "email_processor": "available" if EmailProcessor is not None else "unavailable"
+        }
     }
 
 

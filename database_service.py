@@ -5,12 +5,13 @@ PostgreSQL数据库服务 - 财务邮件数据存储
 import os
 import json
 import psycopg2
-from psycopg2 import sql
+from psycopg2 import sql, pool
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import logging
 from decimal import Decimal
+from permission_controller import permission_controller
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -20,22 +21,53 @@ logger = logging.getLogger(__name__)
 class DatabaseService:
     """PostgreSQL数据库服务类 - 支持直接连接和MCP连接"""
     
-    def __init__(self, connection_string: Optional[str] = None, use_mcp: bool = False):
+    # 连接池实例（类变量）
+    _connection_pool = None
+    
+    def __init__(self, connection_string: Optional[str] = None, use_mcp: bool = False, 
+                 pool_size: int = 10, user_id: str = "default_user"):
         """
         初始化数据库服务
         
         Args:
             connection_string: 数据库连接字符串
             use_mcp: 是否使用MCP连接 (默认为False，使用直接连接)
+            pool_size: 连接池大小
+            user_id: 用户ID，用于权限控制
         """
         self.connection_string = connection_string or os.getenv('DATABASE_URL')
         self.use_mcp = use_mcp
+        self.pool_size = pool_size
+        self.user_id = user_id
         self.conn = None
+        
+        # 检查用户是否有数据库访问权限
+        if not permission_controller.check_user_permission(user_id, "access_database"):
+            logger.warning(f"用户 {user_id} 没有数据库访问权限")
+        
+        # 初始化连接池（仅初始化一次）
+        if not self.use_mcp and DatabaseService._connection_pool is None:
+            self._initialize_connection_pool()
         
         if not use_mcp:
             self._ensure_table()
         else:
             logger.info("MCP连接模式已启用，表结构由MCP服务器管理")
+    
+    def _initialize_connection_pool(self):
+        """初始化连接池"""
+        try:
+            if not self.connection_string:
+                raise ValueError("Database connection string is not provided")
+            
+            DatabaseService._connection_pool = pool.SimpleConnectionPool(
+                1,  # 最小连接数
+                self.pool_size,  # 最大连接数
+                self.connection_string
+            )
+            logger.info(f"数据库连接池初始化成功，大小: {self.pool_size}")
+        except Exception as e:
+            logger.error(f"数据库连接池初始化失败: {e}")
     
     def _get_connection(self):
         """获取数据库连接（支持MCP和直接连接）"""
@@ -45,17 +77,24 @@ class DatabaseService:
             return self._get_direct_connection()
     
     def _get_direct_connection(self):
-        """获取直接数据库连接"""
+        """获取直接数据库连接（使用连接池）"""
         try:
             if not self.connection_string:
                 raise ValueError("Database connection string is not provided")
             
-            conn = psycopg2.connect(self.connection_string)
-            logger.info("成功通过直接连接连接到PostgreSQL数据库")
-            return conn
+            # 使用连接池获取连接
+            if DatabaseService._connection_pool is not None:
+                conn = DatabaseService._connection_pool.getconn()
+                logger.debug("从连接池获取数据库连接")
+                return conn
+            else:
+                # 回退到直接连接
+                conn = psycopg2.connect(self.connection_string)
+                logger.info("成功通过直接连接连接到PostgreSQL数据库")
+                return conn
             
         except Exception as e:
-            logger.error(f"直接数据库连接失败: {e}")
+            logger.error(f"数据库连接失败: {e}")
             return None
     
     def _get_mcp_connection(self):
@@ -101,9 +140,15 @@ class DatabaseService:
     def disconnect(self):
         """断开数据库连接"""
         if self.conn:
-            self.conn.close()
+            if not self.use_mcp and DatabaseService._connection_pool is not None:
+                # 将连接返回到连接池
+                DatabaseService._connection_pool.putconn(self.conn)
+                logger.debug("数据库连接已返回到连接池")
+            else:
+                # 直接关闭连接
+                self.conn.close()
+                logger.info("数据库连接已关闭")
             self.conn = None
-            logger.info("数据库连接已关闭")
     
     def _ensure_table(self):
         """确保数据表存在"""
@@ -179,6 +224,11 @@ class DatabaseService:
     
     def insert_financial_email(self, email_data: Dict[str, Any]) -> bool:
         """插入财务邮件数据"""
+        # 检查用户是否有修改数据的权限
+        if not permission_controller.check_user_permission(self.user_id, "modify_data"):
+            logger.warning(f"用户 {self.user_id} 没有修改数据的权限")
+            return False
+        
         if not self.connect():
             return False
         
@@ -295,6 +345,11 @@ class DatabaseService:
     
     def get_financial_emails(self, limit: int = 100) -> List[Dict]:
         """获取财务邮件数据"""
+        # 检查用户是否有访问财务数据的权限
+        if not permission_controller.check_user_permission(self.user_id, "access_financial_data"):
+            logger.warning(f"用户 {self.user_id} 没有访问财务数据的权限")
+            return []
+        
         if not self.connect():
             return []
         
@@ -317,6 +372,11 @@ class DatabaseService:
     
     def get_summary_stats(self) -> Dict:
         """获取统计摘要"""
+        # 检查用户是否有访问财务数据的权限
+        if not permission_controller.check_user_permission(self.user_id, "access_financial_data"):
+            logger.warning(f"用户 {self.user_id} 没有访问财务数据的权限")
+            return {}
+        
         if not self.connect():
             return {}
         
