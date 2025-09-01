@@ -1,4 +1,4 @@
-# AWS Bedrock AgentCore 财务邮件处理器
+# Financial Mail Check Agent Core
 
 这是一个基于AWS Bedrock AgentCore的财务邮件处理系统，支持Gmail邮件处理和数据分析。
 
