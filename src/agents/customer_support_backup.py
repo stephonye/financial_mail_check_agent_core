@@ -15,8 +15,8 @@ from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 # Import email processing functionality
 try:
-    from email_processor import EmailProcessor, process_financial_emails
-    from database_service import DatabaseService
+    from .email_processor import EmailProcessor, process_financial_emails
+    from .database_service import DatabaseService
 except ImportError:
     # Fallback for testing without email dependencies
     EmailProcessor = None

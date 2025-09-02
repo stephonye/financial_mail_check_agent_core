@@ -1,15 +1,38 @@
+# Core dependencies
 strands-agents
 strands-agents-tools
 bedrock-agentcore
 bedrock-agentcore-starter-toolkit
+
+# AWS SDK
+boto3
+
+# Google API dependencies
 google-auth
 google-auth-oauthlib
 google-auth-httplib2
 google-api-python-client
+
+# Web scraping and parsing
 beautifulsoup4
 lxml
+
+# HTTP requests
 requests
+
+# Database
 psycopg2-binary
+
+# Environment variables
 python-dotenv
+
+# Security
 cryptography
-boto3
+
+# Testing
+pytest
+
+# Development tools
+black
+flake8
+mypy

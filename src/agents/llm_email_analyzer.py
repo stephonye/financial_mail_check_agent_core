@@ -213,7 +213,7 @@ class LLMEmailAnalyzer:
         """LLM失败时的回退规则分析"""
         # 避免循环导入，使用本地导入
         try:
-            from email_processor import EmailProcessor
+            from .email_processor import EmailProcessor
             
             # 使用原有的规则分析
             processor = EmailProcessor()

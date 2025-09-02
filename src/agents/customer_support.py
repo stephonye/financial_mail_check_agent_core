@@ -10,7 +10,7 @@ from strands_tools import calculator, current_time
 from strands.models.bedrock import BedrockModel
 from strands_tools.agent_core_memory import AgentCoreMemoryToolProvider
 from datetime import datetime
-from tool_manager import tool_manager
+from src.tools.tool_manager import tool_manager
 from typing import Dict, List, Optional, Any
 
 # Import the AgentCore SDK
@@ -19,11 +19,11 @@ from starlette.responses import JSONResponse
 
 # Import email processing functionality
 try:
-    from email_processor import EmailProcessor, process_financial_emails, process_emails_with_session, confirm_and_save_session
-    from database_service import DatabaseService
-    from session_manager import session_manager
-    from llm_email_analyzer import analyze_email_content_llm
-    from whatsapp_tool import send_whatsapp_message
+    from .email_processor import EmailProcessor, process_financial_emails, process_emails_with_session, confirm_and_save_session
+    from .database_service import DatabaseService
+    from .session_manager import session_manager
+    from .llm_email_analyzer import analyze_email_content_llm
+    from src.tools.whatsapp_tool import send_whatsapp_message
 except ImportError:
     # Fallback for testing without email dependencies
     EmailProcessor = None

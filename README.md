@@ -1,73 +1,105 @@
-# Financial Mail Check Agent Core
+# AWS Bedrock AgentCore - Financial Email Processor
 
-这是一个基于AWS Bedrock AgentCore的财务邮件处理系统，支持Gmail邮件处理和数据分析。
+This project implements a financial email processor agent built on AWS Bedrock AgentCore. It processes Gmail financial emails (invoices, orders, statements) and provides analysis and storage capabilities.
 
-## 功能特性
+## Project Structure
 
-- 自动搜索和处理Gmail中的财务邮件（发票、订单、对账单）
-- 使用LLM增强功能深度解析邮件内容
-- 实时外币到USD的汇率转换
-- 将结果保存到PostgreSQL数据库（支持直接连接和MCP连接）
-- 提供丰富的查询和统计分析功能
-
-## 新增安全和管理功能
-
-### 工具管理器
-工具管理器提供标准化的工具注册和管理功能：
-- 工具分类管理
-- 工具启用/禁用控制
-- 工具使用统计
-- 工具版本管理
-
-### 凭证管理器
-凭证管理器安全地存储和管理应用凭证：
-- 凭证加密存储
-- 凭证生命周期管理
-- 凭证访问控制
-
-### 权限控制器
-权限控制器管理应用权限和访问控制：
-- 基于角色的权限控制
-- 细粒度权限管理
-- 权限检查和验证
-
-## 安装依赖
-
-```bash
-pip install -r requirements.txt
-pip install cryptography
+```
+.
+├── README.md                    # Project documentation
+├── requirements.txt             # Python dependencies
+├── src/                         # Source code
+│   ├── main.py                  # Main entry point
+│   ├── agents/                  # Agent implementations
+│   │   ├── customer_support.py  # Main financial email processor agent
+│   │   ├── customer_support_backup.py  # Backup agent implementation
+│   │   ├── email_processor.py   # Email processing functionality
+│   │   ├── database_service.py  # Database service integration
+│   │   ├── llm_email_analyzer.py # LLM-based email analysis
+│   │   └── session_manager.py   # Session management
+│   ├── tools/                   # Custom tools
+│   │   ├── tool_manager.py      # Tool management system
+│   │   └── whatsapp_tool.py     # WhatsApp messaging tool
+│   ├── utils/                   # Utility functions
+│   │   ├── credential_manager.py # Credential management
+│   │   ├── permission_controller.py # Permission control
+│   │   ├── exchange_service.py   # Exchange rate service
+│   │   ├── session_manager.py    # Session management
+│   │   ├── deploy.sh            # Deployment script
+│   │   ├── run_local.py         # Local execution script
+│   │   ├── setup_config.py      # Configuration setup
+│   │   ├── check_deployment_status.py # Deployment status checker
+│   │   └── deploy_gateway_memory.py # Gateway memory deployment
+│   ├── memory/                  # Memory examples
+│   │   └── examples/
+│   │       ├── long_term_memory_ops.py
+│   │       └── memory_client.py
+│   ├── config/                  # Configuration files
+│   │   ├── .bedrock_agentcore.yaml
+│   │   ├── credentials.json
+│   │   ├── permissions.json
+│   │   └── policies/
+│   ├── Dockerfile               # Docker configuration
+│   └── docker-compose.yml       # Docker Compose configuration
+├── tests/                       # Test files
+│   ├── test_aws_whatsapp.py     # AWS WhatsApp tool tests
+│   ├── test_whatsapp.py         # WhatsApp tool tests
+│   └── test_llm_enhancement.py  # LLM enhancement tests
+└── docs/                        # Documentation
+    ├── README.md                # Main documentation
+    ├── DEPLOYMENT_GUIDE.md      # Deployment guide
+    └── ...                      # Other documentation files
 ```
 
-## 配置
+## Key Features
 
-1. 配置Gmail API凭证
-2. 配置数据库连接字符串
-3. 配置汇率API密钥
+1. **Financial Email Processing**: Automatically searches and processes Gmail financial emails (invoices, orders, statements)
+2. **Currency Conversion**: Converts foreign currencies to USD using real-time exchange rates
+3. **Database Storage**: Stores processed data in PostgreSQL database
+4. **Statistical Analysis**: Provides statistical analysis and queries on financial data
+5. **WhatsApp Integration**: Send WhatsApp messages using AWS End User Messaging Social
+6. **LLM Enhancement**: Uses LLM for deep analysis of email content
+7. **Memory Management**: Implements long-term memory for conversation context
 
-## 使用方法
+## Getting Started
 
-```bash
-python customer_support.py
-```
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## 部署指南
+2. Configure credentials:
+   ```bash
+   cp src/config/credentials_template.json src/config/credentials.json
+   # Edit src/config/credentials.json with your credentials
+   ```
 
-有关详细的部署信息，请参阅以下文档：
-- [部署指南](DEPLOYMENT_GUIDE.md) - 标准部署步骤
-- [完整部署指南](COMPLETE_DEPLOYMENT_GUIDE.md) - 详细的部署说明
+3. Run the agent:
+   ```bash
+   python src/main.py
+   ```
 
-## 安全特性
+## WhatsApp Tool Usage
 
-- 所有敏感凭证都经过加密存储
-- 基于角色的访问控制
-- 权限验证和审计
+The WhatsApp tool uses AWS End User Messaging Social API. To use it:
 
-## 改进总结
+1. Set up AWS Pinpoint with End User Messaging Social
+2. Configure environment variables:
+   ```bash
+   export WHATSAPP_ORIGINATION_IDENTITY=your_whatsapp_business_number
+   export WHATSAPP_APPLICATION_ID=your_application_id
+   ```
 
-有关详细改进信息，请参阅以下文件：
-- [改进总结](IMPROVEMENT_SUMMARY.md) - 所有改进的概述
-- [新功能总结](NEW_FEATURES_SUMMARY.md) - 新添加功能的详细说明
+3. Use the tool in your agent:
+   ```python
+   from src.tools.whatsapp_tool import send_whatsapp_message
+   
+   result = send_whatsapp_message(
+       to_phone="+1234567890",
+       message_body="Hello from WhatsApp!"
+   )
+   ```
 
-## 文档
+## License
 
-- [权限配置](permissions.json) - 应用权限配置文件
+This project is licensed under the MIT License - see the LICENSE file for details.
