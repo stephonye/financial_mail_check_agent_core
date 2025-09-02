@@ -1,0 +1,29 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:*",
+                "codebuild:*",
+                "ecr:*",
+                "iam:CreateRole",
+                "iam:PassRole",
+                "iam:GetRole",
+                "logs:*",
+                "s3:GetObject",
+                "s3:PutObject"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:us-west-2:975800734221:log-group:/aws/bedrock-agentcore/*"
+        }
+    ]
+}

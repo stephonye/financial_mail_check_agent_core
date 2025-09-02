@@ -12,3 +12,4 @@ requests
 psycopg2-binary
 python-dotenv
 cryptography
+boto3

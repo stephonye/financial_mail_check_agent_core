@@ -15,6 +15,7 @@ from typing import Dict, List, Optional, Any
 
 # Import the AgentCore SDK
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from starlette.responses import JSONResponse
 
 # Import email processing functionality
 try:
@@ -22,6 +23,7 @@ try:
     from database_service import DatabaseService
     from session_manager import session_manager
     from llm_email_analyzer import analyze_email_content_llm
+    from whatsapp_tool import send_whatsapp_message
 except ImportError:
     # Fallback for testing without email dependencies
     EmailProcessor = None
@@ -31,6 +33,7 @@ except ImportError:
     DatabaseService = None
     session_manager = None
     analyze_email_content_llm = None
+    send_whatsapp_message = None
 
 WELCOME_MESSAGE = """
 Welcome to the Financial Email Processor! 
@@ -510,8 +513,18 @@ if all([process_emails_with_session, confirm_and_save_session, session_manager])
 if analyze_email_content_llm is not None:
     tool_manager.register_tool("analyze_email_with_llm", "1.0.0", "使用LLM深度分析邮件内容", "AI工具", analyze_email_with_llm)
 
+# 注册WhatsApp消息发送工具
+if send_whatsapp_message is not None:
+    tool_manager.register_tool("send_whatsapp_message", "1.0.0", "发送WhatsApp消息", "通讯工具", send_whatsapp_message)
+
 # 注册AgentCore内存管理工具
-memory_tool_provider = AgentCoreMemoryToolProvider()
+# 初始化时提供所需的参数
+memory_tool_provider = AgentCoreMemoryToolProvider(
+    memory_id="financial-email-processor-memory",
+    actor_id="financial-email-processor-actor",
+    session_id="financial-email-processor-session",
+    namespace="financial-email-processor-namespace"
+)
 for memory_tool in memory_tool_provider.tools:
     tool_manager.register_tool(
         memory_tool.__name__ if hasattr(memory_tool, '__name__') else str(memory_tool),
@@ -544,7 +557,7 @@ def invoke(payload):
 
 # Health check endpoint
 @app.route("/health")
-def health_check():
+def health_check(request):
     """Health check endpoint for AWS Bedrock AgentCore"""
     # 检查数据库连接状态
     db_status = "unknown"
@@ -571,7 +584,7 @@ def health_check():
     except:
         exchange_service_status = "error"
     
-    return {
+    return JSONResponse({
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "service": "financial-email-processor",
@@ -581,12 +594,12 @@ def health_check():
             "exchange_service": exchange_service_status,
             "email_processor": "available" if EmailProcessor is not None else "unavailable"
         }
-    }
+    })
 
 
 # Readiness check endpoint
 @app.route("/ready")
-def readiness_check():
+def readiness_check(request):
     """Readiness check endpoint"""
     # 检查必要的依赖和服务
     dependencies_ready = True
@@ -594,14 +607,14 @@ def readiness_check():
     if EmailProcessor is None:
         dependencies_ready = False
     
-    return {
+    return JSONResponse({
         "status": "ready" if dependencies_ready else "not_ready",
         "dependencies": {
             "email_processor": EmailProcessor is not None,
             "database_service": DatabaseService is not None,
             "session_manager": session_manager is not None
         }
-    }
+    })
 
 
 if __name__ == "__main__":

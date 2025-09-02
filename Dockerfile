@@ -35,8 +35,10 @@ RUN useradd -m -u 1000 bedrock_agentcore && \
 USER bedrock_agentcore
 
 # 暴露端口
-EXPOSE 8080  # AgentCore HTTP端口
-EXPOSE 8000  # 可选：调试端口
+# AgentCore HTTP端口
+EXPOSE 8080
+# 可选：调试端口
+EXPOSE 8000
 
 # 复制项目文件
 COPY --chown=bedrock_agentcore:bedrock_agentcore . .

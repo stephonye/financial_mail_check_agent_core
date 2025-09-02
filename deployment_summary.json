@@ -1,0 +1,28 @@
+{
+  "deployment_status": {
+    "memory": {
+      "total_count": 2,
+      "active_count": 2,
+      "creating_count": 0,
+      "components": [
+        {
+          "id": "CustomerSupportMemory-Aw12Z7FdL6",
+          "name": "N/A",
+          "status": "ACTIVE",
+          "created_time": "N/A"
+        },
+        {
+          "id": "SessionSummaryMemory-4Ms5DT3HVO",
+          "name": "N/A",
+          "status": "ACTIVE",
+          "created_time": "N/A"
+        }
+      ]
+    },
+    "gateway": {
+      "total_count": 0,
+      "available_count": 0,
+      "components": []
+    }
+  }
+}
